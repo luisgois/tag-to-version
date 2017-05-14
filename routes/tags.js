@@ -33,29 +33,38 @@ router.post('/', function(req, res, next) {
   console.log(req.body);
   console.log('==============================');
 
-  var refChanges = req.body.refChanges;
-  //console.log(JSON.stringify(refChanges));
+  var refChanges = req.body.push.changes;
 
   // check if tag
 
-  var regex = /^refs\/tags\/(.+)$/;
   var tag;
+  var created;
+  var commitHash;
+
   for (var i=0; i<refChanges.length; i++){
-      var refId = eval(JSON.stringify(refChanges[i].refId));
-      var result = refId.match(regex);
-      tag=result[1];
-      var operation = eval(JSON.stringify(refChanges[i].type));
+      console.log(refChanges[i]);
 
-      console.log(tag);
-      console.log(operation);
+      // boolean, true if push is about a ref creation
+      created=eval(JSON.stringify(refChanges[i].created));
 
-      if (tag && operation == 'ADD') {
-         console.log(tag);
-         break;
+      if (created) {
+          if (eval(JSON.stringify(refChanges[i].new.type)) == 'tag' ) {
+              tag = eval(JSON.stringify(refChanges[i].new.name));
+              commitHash = eval(JSON.stringify(refChanges[i].new.target.hash));
+              console.log('Created tag: ' + tag);
+              break;
+          }
+      }
+      else {
+          if (eval(JSON.stringify(refChanges[i].old.type)) == 'tag' ) {
+              tag = eval(JSON.stringify(refChanges[i].old.name));
+              console.log('Removed tag: ' + tag);
+              break;
+          }
       }
   }
 
-  if (!tag || operation != 'ADD') return res.sendStatus(200); // no tag found
+  if (!tag) return res.sendStatus(200); // no tag found for processing
 
   console.log('TAG found:' + tag);
 
@@ -66,31 +75,22 @@ router.post('/', function(req, res, next) {
 
   console.log('git clone ' + repositoryUrl);
 
-  var changesetsValues= req.body.changesets.values;
-  console.log(JSON.stringify(changesetsValues));
-
-  // check if tag
-
-  for (var i=0; i<changesetsValues.length; i++){
-
-      console.log(changesetsValues[i]);
-
-  }
-
-/*
-  foo = new cmd_exec('git clone', [repositoryUrl],
-      function (me, data) {me.stdout += data.toString();},
-      function (me) {me.exit = 1;}
-  );
-
-  setTimeout(
-      // wait 0.25 seconds and print the output
-      log_console,
-      250);*/
-
   // repo remote update
   // repo go to commit that triggered POST
   // get list of issues between last 2 tags
+
+
+    /*
+      foo = new cmd_exec('git clone', [repositoryUrl],
+          function (me, data) {me.stdout += data.toString();},
+          function (me) {me.exit = 1;}
+      );
+
+      setTimeout(
+          // wait 0.25 seconds and print the output
+          log_console,
+          250);*/
+
 
   // check if JIRA already has version = tag, otherwise create it
   // update fixVersion of each issue with tag value
