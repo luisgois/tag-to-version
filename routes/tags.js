@@ -70,30 +70,64 @@ router.post('/', function(req, res, next) {
   console.log('TAG found:' + tag);
 
   // check if repo already cloned, otherwise clone
-  var repository = stringify(req.body.repository.slug);
-  var project    = stringify(req.body.repository.project.key);
+  var repositoryName = stringify(req.body.repository.slug);
+  var projectName    = stringify(req.body.repository.project.key);
 
-  //http://goi@gramme:7990/bitbucket/scm/nco/common_iem.git
-  //var repositoryUrl  = 'ssh://' + bitbucketUser + '@' + bitbucketServer + '/' + project + '/' + repository + '.git';
+  // We can clone using
+    // http://goi@gramme:7990/bitbucket/scm/nco/common_iem.git
+    // or
+    // ssh://git@gramme:7999/nco/common_iem.git
 
-  var repositoryUrl = 'http://goi@gramme.cfmu.corp.eurocontrol.int:7990/bitbucket/scm/nco/common_iem.git';
-  var repositoryClonePath = local("../repos/" + project.toLowerCase() + "/" + repository.toLowerCase());
+  //var repositoryUrl = 'http://goi@gramme.cfmu.corp.eurocontrol.int:7990/bitbucket/scm/nco/common_iem.git';
+  var repositoryUrl  = 'ssh://' + bitbucketUser + '@' + bitbucketServer + '/' + projectName + '/' + repositoryName + '.git';
 
-  console.log('git clone ' + repositoryUrl + ' # to dir ' + repositoryClonePath);
+  // Credentials are required for ssh cloning authentication
+    var cloneOptions = {
+        fetchOpts: {
+            callbacks: {
+                certificateCheck: function() {
+                    return 1;
+                },
+                credentials: function(url, userName) {
+                    return NodeGit.Cred.sshKeyFromAgent(userName);
+                }
+            }
+        }
+    };
 
-  var repository = git.Clone(repositoryUrl, repositoryClonePath)
-    // Look up this known commit.
-        .then(function(repo) {
-            console.log('Cloned: to ' + repo.workdir());
-            // Use a known commit sha from this repository.
-            /*console.log(repo.getTag(tag));
-                return repo.getCommit(commitHash);*/
-            })
-        .catch(function (err) {
-          console.error(err);// failure is handled here
-      });
+  var repositoryClonePath = local("../repos/" + projectName.toLowerCase() + "/" + repositoryName.toLowerCase());
 
-  console.log(repository);
+  var currentRepository = git.Repository;
+
+  currentRepository = git.Repository.open(repositoryClonePath).then(function (repo) {
+            // This is the first function of the then which contains the successfully
+            // calculated result of the promise
+            console.log('using repository clone in ' + repositoryClonePath);
+            return repo;
+        })
+        .catch(function (reasonForFailure) {
+            // failure is handled here
+            console.error(reasonForFailure);
+
+            // TODO clone only if directory not present
+
+            console.log('cloning repository ' + repositoryUrl + ' to dir ' + repositoryClonePath);
+            return git.Clone(repositoryUrl, repositoryClonePath, cloneOptions)
+                .then(function (repo) {
+                    console.log('Cloned: to ' + repo.workdir());
+                    // Use a known commit sha from this repository.
+                    /*console.log(repo.getTag(tag));
+                     return repo.getCommit(commitHash);*/
+                })
+                .catch(function (err) {
+                    console.error(err);// failure is handled here
+                    res.sendStatus(900);
+                });
+        });
+
+  // do the rest here
+
+  console.log(currentRepository.workdir());
 
 
             //var sshPublicKeyPath = local("/home/" + bitbucketUser + "/.ssh/id_rsa.pub");
