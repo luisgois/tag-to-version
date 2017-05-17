@@ -12,6 +12,15 @@ var jiraUser = process.env.ACM_JIRA_USER;
 var jiraPassword = process.env.ACM_JIRA_PASSWORD;
 var local = path.join.bind(path, __dirname);
 
+// TODO git-promise
+// TODO node-git-tags (semver)
+// TODO node-semver
+
+// if none of the above results, go for Jenkins as webservice (logs and retry of POST to Jira for free)
+
+// TODO update JIRA with version, files (and git diff?!) in the issue comments
+
+
 var cloneOptions = {
     fetchOpts: {
         callbacks: {
@@ -44,9 +53,33 @@ function hasTag(commit) {
 
 // get list of issues and modified files for each commit between since previous tag
 function getUpdates(repo, tagName) {
+    var cloneOptions = {
+        fetchOpts: {
+            callbacks: {
+                certificateCheck: function() {
+                    return 1;
+                },
+                credentials: function(url, userName) {
+                    return Git.Cred.sshKeyFromAgent(userName);
+                }
+            },
+            downloadTags: 1
+        }
+    };
+
+    console.log('fetching latest updates...');
+
     // repo remote update
     Git.Remote.setAutotag(repo, 'origin', 1);
-    repo.fetchAll(cloneOptions);
+
+
+    repo.fetch('origin',cloneOptions)
+        .then(function() {
+            console.log('fetched');
+        })
+        .catch(function(err) {
+            console.error(err);
+        });
 
     //git-cli branch
 

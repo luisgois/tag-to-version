@@ -1,10 +1,10 @@
 <component name="ProjectRunConfigurationManager">
   <configuration default="false" name="bin/www" type="NodeJSConfigurationType" factoryName="Node.js" path-to-node="project" path-to-js-file="bin/www" working-dir="$PROJECT_DIR$">
     <envs>
-      <env name="ACM_BITBUCKET_SERVER" value="gramme.cfmu.corp.eurocontrol.int:7999" />
+      <env name="ACM_BITBUCKET_SERVER" value="localhost:7999" />
       <env name="ACM_BITBUCKET_USER" value="goi" />
       <env name="ACM_BITBUCKET_PASSWORD" value="acm_tagtoversion" />
-      <env name="ACM_JIRA_SERVER" value="gramme.cfmu.corp.eurocontrol.int:8580" />
+      <env name="ACM_JIRA_SERVER" value="localhost:8085" />
       <env name="ACM_JIRA_USER" value="acm_tagtoversion" />
       <env name="ACM_JIRA_PASSWORD" value="acm_tagtoversion" />
       <env name="DEBUG" value="tag-to-version:*" />
