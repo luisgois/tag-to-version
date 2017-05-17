@@ -21,7 +21,8 @@ var cloneOptions = {
             credentials: function(url, userName) {
                 return Git.Cred.sshKeyFromAgent(userName);
             }
-        }
+        },
+        downloadTags: 1
     }
 };
 
@@ -44,6 +45,7 @@ function hasTag(commit) {
 // get list of issues and modified files for each commit between since previous tag
 function getUpdates(repo, tagName) {
     // repo remote update
+    Git.Remote.setAutotag(repo, 'origin', 1);
     repo.fetchAll(cloneOptions);
 
     // repo go to commit that triggered POST
@@ -53,7 +55,7 @@ function getUpdates(repo, tagName) {
     Git.Tag.list(repo)
         .then(function(tagNames) {
             return tagNames.filter(function (tagNameTest) {
-                return tagNameTest != tagName;
+                return tagName !== tagNameTest;
             })
         })
         .then(function(tagNames) {
@@ -143,7 +145,7 @@ router.post('/', function(req, res, next) {
         // calculated result of the promise
         console.log('using repository clone in ' + repositoryClonePath);
 
-        updates = getUpdates(repo, commitHash);
+        updates = getUpdates(repo, tag);
       })
       .catch(function (reasonForFailure) {
         // failure is handled here
@@ -160,7 +162,7 @@ router.post('/', function(req, res, next) {
             /*console.log(repo.getTag(tag));
             return repo.getCommit(commitHash);*/
 
-            updates = getUpdates(repo, commitHash);
+            updates = getUpdates(repo, tag);
         })
         .catch(function (err) {
             console.error(err);// failure is handled here
