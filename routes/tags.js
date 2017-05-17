@@ -1,19 +1,20 @@
+var git = require('nodegit');
 var express = require('express');
+var path = require('path');
+
 var router = express.Router();
-var bitbucketUrl = process.env.BITBUCKET_URL;
 
-function cmd_exec(cmd, args, cb_stdout, cb_end) {
-    var spawn = require('child_process').spawn,
-        child = spawn(cmd, args),
-        me = this;
-    me.exit = 0;  // Send a cb to set 1 when cmd exits
-    me.stdout = "";
-    child.stdout.on('data', function (data) { cb_stdout(me, data) });
-    child.stdout.on('end', function () { cb_end(me) });
-}
+var bitbucketServer = process.env.ACM_BITBUCKET_SERVER;
+var bitbucketUser = process.env.ACM_BITBUCKET_USER;
+var bitbucketPassword = process.env.ACM_BITBUCKET_PASSWORD;
+var jiraUrl = process.env.ACM_JIRA_URL;
+var jiraUser = process.env.ACM_JIRA_USER;
+var jiraPassword = process.env.ACM_JIRA_PASSWORD;
+var local = path.join.bind(path, __dirname);
 
-function log_console() {
-    console.log(foo.stdout);
+// return JSON payload values as string, no enclosing quotes
+function stringify(value) {
+    return eval(JSON.stringify(value));
 }
 
 //TODO check if environment variables are set at application launch and abort otherwise
@@ -27,6 +28,7 @@ router.get('/', function(req, res, next) {
 
 /* GET webhook payload listing. */
 router.post('/', function(req, res, next) {
+  var tagToVersionWorkDir = require('path').join(__dirname, '../../tag-to-version-workdir/');
 
   if (!req.body) return res.sendStatus(400);
 
@@ -48,18 +50,17 @@ router.post('/', function(req, res, next) {
       created=eval(JSON.stringify(refChanges[i].created));
 
       if (created) {
-          if (eval(JSON.stringify(refChanges[i].new.type)) == 'tag' ) {
-              tag = eval(JSON.stringify(refChanges[i].new.name));
-              commitHash = eval(JSON.stringify(refChanges[i].new.target.hash));
-              console.log('Created tag: ' + tag);
+          if (stringify(refChanges[i].new.type) == 'tag' ) {
+              tag = stringify(refChanges[i].new.name);
+              commitHash = stringify(refChanges[i].new.target.hash);
+              console.log('Created tag: ' + tag + ' on ' + commitHash);
               break;
           }
       }
       else {
-          if (eval(JSON.stringify(refChanges[i].old.type)) == 'tag' ) {
-              tag = eval(JSON.stringify(refChanges[i].old.name));
+          if (stringify(refChanges[i].old.type) == 'tag' ) {
+              tag = stringify(refChanges[i].old.name);
               console.log('Removed tag: ' + tag);
-              break;
           }
       }
   }
@@ -69,11 +70,76 @@ router.post('/', function(req, res, next) {
   console.log('TAG found:' + tag);
 
   // check if repo already cloned, otherwise clone
-  var repository = eval(JSON.stringify(req.body.repository.slug));
-  var project    = eval(JSON.stringify(req.body.repository.project.key));
-  var repositoryUrl  = bitbucketUrl + '/' + project + '/' + repository + '.git';
+  var repository = stringify(req.body.repository.slug);
+  var project    = stringify(req.body.repository.project.key);
 
-  console.log('git clone ' + repositoryUrl);
+  //http://goi@gramme:7990/bitbucket/scm/nco/common_iem.git
+  //var repositoryUrl  = 'ssh://' + bitbucketUser + '@' + bitbucketServer + '/' + project + '/' + repository + '.git';
+
+  var repositoryUrl = 'http://goi@gramme.cfmu.corp.eurocontrol.int:7990/bitbucket/scm/nco/common_iem.git';
+  var repositoryClonePath = local("../repos/" + project.toLowerCase() + "/" + repository.toLowerCase());
+
+  console.log('git clone ' + repositoryUrl + ' # to dir ' + repositoryClonePath);
+
+  var repository = git.Clone(repositoryUrl, repositoryClonePath)
+    // Look up this known commit.
+        .then(function(repo) {
+            console.log('Cloned: to ' + repo.workdir());
+            // Use a known commit sha from this repository.
+            /*console.log(repo.getTag(tag));
+                return repo.getCommit(commitHash);*/
+            })
+        .catch(function (err) {
+          console.error(err);// failure is handled here
+      });
+
+  console.log(repository);
+
+
+            //var sshPublicKeyPath = local("/home/" + bitbucketUser + "/.ssh/id_rsa.pub");
+  //var sshPrivateKeyPath = local("/home/" + bitbucketUser + "/.ssh/id_rsa");
+
+/*
+
+  var cloneOptions = {
+     fetchOpts: {
+          callbacks: {
+              certificateCheck: function() {
+                  return 1;
+              },
+              credentials: function(url, userName) {
+                  return NodeGit.Cred.sshKeyFromAgent(userName);
+              }
+          }
+      }
+  };
+
+  var tagToVersionWorkDir = require('path').join(__dirname, '../../tag-to-version.workdir/' + repository);
+  var cloneRepository = NodeGit.Clone(cloneURL, localPath, cloneOptions);
+
+  var errorAndAttemptOpen = function() {
+    return NodeGit.Repository.open(local);
+  };
+
+  cloneRepository.catch(errorAndAttemptOpen)
+    .then(function(repository) {
+        // Access any repository methods here.
+        console.log("Is the repository bare? %s", Boolean(repository.isBare()));
+  });*/
+
+
+/*
+  git.Clone(repositoryUrl, tagToVersionWorkDir, cloneOptions).then(function (repo) {
+        console.log('Cloned: ' + repository + " to " + repo.workdir());
+        // repo remote update
+        //repo.fetchAll()
+        //    .then(() => )
+        // repo go to commit that triggered POST
+        // get list of issues between last 2 tags
+    }).catch(function (err) {
+        console.log("Not cloned: " + err);
+    });
+*/
 
   // repo remote update
   // repo go to commit that triggered POST
