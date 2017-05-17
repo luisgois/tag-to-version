@@ -48,6 +48,8 @@ function getUpdates(repo, tagName) {
     Git.Remote.setAutotag(repo, 'origin', 1);
     repo.fetchAll(cloneOptions);
 
+    //git-cli branch
+
     // repo go to commit that triggered POST
 
 
